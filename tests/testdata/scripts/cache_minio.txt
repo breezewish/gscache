@@ -1,0 +1,68 @@
+# Test with Minio as the storage backend
+
+start_minio
+
+env AWS_ACCESS_KEY_ID=minioadmin
+env AWS_SECRET_ACCESS_KEY=minioadmin
+
+gscache daemon start --blob.url=s3://$MINIO_BUCKET?endpoint=http://$MINIO_URL&use_path_style=true&disable_https=false --log.level=debug
+stderr 'Server daemon is ready'
+
+gscache daemon status
+stdout '"Status": "ok"'
+
+env:set_gocacheprog
+env GOCACHE=$WORK/gocache
+
+gscache stats
+stdout '"Get.Hit": 0'
+stdout '"Put.Total": 0'
+
+# Note: There is a sleep before gscache stats to ensure stats is fully flushed
+
+go build test.go
+
+sleep 1.5s
+gscache stats
+stdout '"Get.Hit": 0'
+! stdout '"Put.Total": 0'
+stdout '"Put.Total": \d{2,}'
+
+go build test.go
+
+sleep 1.5s
+gscache stats
+! stdout '"Get.Hit": 0'
+stdout '"Get.Hit": \d{2,}'
+
+gscache daemon stop
+
+# Cleanup local cache and run again
+rm $WORK/.gscache
+
+gscache daemon start --blob.url=s3://$MINIO_BUCKET?endpoint=http://$MINIO_URL&use_path_style=true&disable_https=false --log.level=debug
+stderr 'Server daemon is ready'
+
+gscache stats
+stdout '"Get.Hit": 0'
+stdout '"Put.Total": 0'
+
+go build test.go
+
+sleep 1.5s
+gscache stats
+! stdout '"Get.Hit": 0'
+stdout '"Get.Hit": \d{2,}'
+
+gscache daemon stop
+
+-- test.go --
+package main
+
+import (
+    "fmt"
+)
+
+func main() {
+    fmt.Println("Hello, World!")
+}

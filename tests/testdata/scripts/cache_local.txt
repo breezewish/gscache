@@ -1,0 +1,44 @@
+# Test with Local as the storage backend
+
+gscache daemon start
+stderr 'Server daemon is ready'
+
+gscache daemon status
+stdout '"Status": "ok"'
+
+env:set_gocacheprog
+env GOCACHE=$WORK/gocache
+
+gscache stats
+stdout '"Get.Hit": 0'
+stdout '"Put.Total": 0'
+
+# Note: There is a sleep before gscache stats to ensure stats is fully flushed
+
+go build test.go
+
+sleep 1.5s
+gscache stats
+stdout '"Get.Hit": 0'
+! stdout '"Put.Total": 0'
+stdout '"Put.Total": \d{2,}'
+
+go build test.go
+
+sleep 1.5s
+gscache stats
+! stdout '"Get.Hit": 0'
+stdout '"Get.Hit": \d{2,}'
+
+gscache daemon stop
+
+-- test.go --
+package main
+
+import (
+    "fmt"
+)
+
+func main() {
+    fmt.Println("Hello, World!")
+}

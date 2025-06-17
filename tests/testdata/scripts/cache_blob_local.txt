@@ -1,0 +1,65 @@
+# This test uses file:// as the blob storage backend
+
+mkdir $WORK/myblob
+
+gscache daemon start --blob.url=file://$WORK/myblob --log.level=debug
+stderr 'Server daemon is ready'
+
+gscache daemon status
+stdout '"Status": "ok"'
+
+env:set_gocacheprog
+env GOCACHE=$WORK/gocache
+
+gscache stats
+stdout '"Get.Hit": 0'
+stdout '"Put.Total": 0'
+
+go build test.go
+
+sleep 1.5s
+gscache stats
+stdout '"Get.Hit": 0'
+! stdout '"Put.Total": 0'
+stdout '"Put.Total": \d{2,}'
+
+exists $WORK/myblob/b
+
+go build test.go
+
+sleep 1.5s
+gscache stats
+! stdout '"Get.Hit": 0'
+stdout '"Get.Hit": \d{2,}'
+
+gscache daemon stop
+
+# Cleanup local cache and run again
+rm $WORK/.gscache
+
+gscache daemon start --blob.url=file://$WORK/myblob --log.level=debug
+stderr 'Server daemon is ready'
+
+gscache stats
+stdout '"Get.Hit": 0'
+stdout '"Put.Total": 0'
+
+go build test.go
+
+sleep 1.5s
+gscache stats
+! stdout '"Get.Hit": 0'
+stdout '"Get.Hit": \d{2,}'
+
+gscache daemon stop
+
+-- test.go --
+package main
+
+import (
+    "fmt"
+)
+
+func main() {
+    fmt.Println("Hello, World!")
+}

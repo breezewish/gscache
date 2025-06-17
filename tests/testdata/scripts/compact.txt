@@ -1,0 +1,66 @@
+# First write several small blobs, then restart the server to trigger a compaction.
+
+start_minio
+
+env AWS_ACCESS_KEY_ID=minioadmin
+env AWS_SECRET_ACCESS_KEY=minioadmin
+
+gscache daemon start --blob.url=s3://$MINIO_BUCKET?endpoint=http://$MINIO_URL&use_path_style=true&disable_https=false --log.level=debug
+stderr 'Server daemon is ready'
+
+sleep 1.5s
+gscache stats
+# Compaction should be skipped for empty cache.
+stdout '"Blob.Compactor.Skip": 16'
+# Archive download should be skipped for empty cache.
+stdout '"Blob.ArchiveStore.Download.Success.Bytes": 0'
+
+gscache daemon status
+stdout '"Status": "ok"'
+
+env:set_gocacheprog
+env GOCACHE=$WORK/gocache
+
+go build test.go
+
+sleep 1.5s
+gscache stats
+
+# For this moment, we have no archives, so Get.ByArchive should be 0.
+stdout '"Blob.FromOrganic.Get.ByArchive": 0'
+
+gscache daemon stop
+
+gscache daemon start --blob.url=s3://$MINIO_BUCKET?endpoint=http://$MINIO_URL&use_path_style=true&disable_https=false --log.level=debug
+stderr 'Server daemon is ready'
+
+# Wait long enough for compaction to finish.
+sleep 5s
+gscache stats
+
+# For this moment, we have no archives to download
+stdout '"Blob.ArchiveStore.Download.Success.Bytes": 0'
+# Compaction is triggered when server is started.
+stdout '"Blob.Compactor.SmallBlob.Add.Total": \d\d'
+stdout '"Blob.FromOrganic.Get.ByArchive": 0'
+
+go build test.go
+
+sleep 1.5s
+gscache stats
+
+# This time build should utilize something from the archive.
+stdout '"Blob.FromOrganic.Get.ByArchive": \d\d'
+
+gscache daemon stop
+
+-- test.go --
+package main
+
+import (
+    "fmt"
+)
+
+func main() {
+    fmt.Println("Hello, World!")
+}

@@ -1,0 +1,24 @@
+env:set_gocacheprog
+env GOCACHE=$WORK/gocache
+
+# stdout and stderr should be both empty
+
+go mod tidy
+! stdout .
+! stderr .
+
+gscache daemon stop
+
+-- go.mod --
+module example.com/test
+
+-- test.go --
+package main
+
+import (
+    "fmt"
+)
+
+func main() {
+    fmt.Println("Hello, World!")
+}

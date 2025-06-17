@@ -1,0 +1,54 @@
+! gscache daemon status
+stderr 'Server daemon is not running'
+
+gscache daemon stop
+stderr 'Server daemon is not running'
+
+gscache daemon start
+stderr 'Server daemon is ready'
+
+gscache daemon status
+stdout '"Status": "ok"'
+
+gscache daemon stop
+stderr 'Server daemon stopped'
+
+! gscache daemon status
+stderr 'Server daemon is not running'
+
+# ========================================
+# Test with customized port via flags or environment variables
+
+gscache daemon start --port 12345
+stderr 'Server daemon is ready'
+
+! gscache daemon status
+stderr 'Server daemon is not running'
+
+gscache daemon status --port 12345
+stdout '"Status": "ok"'
+
+env GSCACHE_PORT=12345
+gscache daemon status
+stdout '"Status": "ok"'
+
+env GSCACHE_PORT=51234
+gscache daemon status --port 12345
+stdout '"Status": "ok"'
+
+env GSCACHE_PORT=
+gscache daemon status --port 12345
+stdout '"Status": "ok"'
+
+! gscache daemon status
+stderr 'Server daemon is not running'
+
+gscache daemon stop --port 12345
+stderr 'Server daemon stopped'
+
+# ========================================
+# Daemon exited unexpectedly
+
+! gscache daemon start --port 1
+stderr 'daemon process was exited unexpectedly'
+stderr 'bind: permission denied'

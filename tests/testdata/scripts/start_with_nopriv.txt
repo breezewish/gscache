@@ -1,0 +1,11 @@
+# Test starting with wrong credentials. gscache should show reasonable error message.
+
+start_minio
+
+env AWS_ACCESS_KEY_ID=wrongak
+env AWS_SECRET_ACCESS_KEY=wrongsk
+
+! gscache daemon start --blob.url=s3://$MINIO_BUCKET?endpoint=http://$MINIO_URL&use_path_style=true&disable_https=false
+! stderr 'Server daemon is ready'
+stderr 'daemon process was exited unexpectedly'
+stderr 'The Access Key Id you provided does not exist in our records'
